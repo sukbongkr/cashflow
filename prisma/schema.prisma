@@ -6,16 +6,15 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model Asset {
-  id Int @default(autoincrement()) @unique
+  id Int @id @default(autoincrement())
   title String
   income Int
   outcome Int
   price Int
   dept Int
 }
-
