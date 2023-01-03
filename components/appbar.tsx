@@ -1,4 +1,5 @@
-import Link from "next/link";
+import Link from "next/link"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 export default function Appbar() {
   return (
@@ -8,7 +9,7 @@ export default function Appbar() {
                 <li><Link href='/'>CashFlow</Link></li>
             </ul>
             <div>
-                <div>SignOut</div>
+                <button onClick={()=>signOut()}>SignOut</button>
             </div>
         </nav>
     </header>

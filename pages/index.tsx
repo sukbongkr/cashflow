@@ -1,15 +1,42 @@
 import type { NextPage } from 'next'
 import Layout from '../components/layout'
 import useSWR from 'swr'
-import { Asset } from '@prisma/client'
+import { Asset, User } from '@prisma/client'
 import { useMemo } from 'react'
+import useMutation from '../libs/usemutation'
+import { useForm } from 'react-hook-form'
  
 interface Response {
   assets : Asset[]
+  user : User
+}
+
+interface UploadForm {
+  title: string
+  income : number
+  outcome : number
+  price : number
+  debt : number
+}
+
+interface UploadAssetMutation {
+  asset : Asset;
 }
 
 const Home: NextPage = () => {
-  const { data } = useSWR<Response>('/api/assets')
+  const { data, mutate } = useSWR<Response>('/api/assets')
+  const [ upload, {loading,data : uploadDate} ] = useMutation("/api/assets")
+  const { register, handleSubmit, reset } = useForm<UploadForm>();
+
+  const onValid = (data: UploadForm) => {
+    if(!data.debt) data.debt=0
+    if(!data.price) data.price=0
+    if(!data.income) data.income=0
+    if(!data.outcome) data.outcome=0
+    upload(data)
+    mutate()
+    reset()
+  }
 
   const totalCashFlow = useMemo(()=>{
     if(data){
@@ -23,11 +50,23 @@ const Home: NextPage = () => {
   const totalAssetPrice = useMemo(()=>{
     if(data){
       const totalPrice = data?.assets.map(d=>d.price).reduce((p,c)=>p+c, 0)
-      const totalDebt = data?.assets.map(d=>d.dept).reduce((p,c)=>p+c, 0)
+      const totalDebt = data?.assets.map(d=>d.debt).reduce((p,c)=>p+c, 0)
       
       return totalPrice - totalDebt
     }
   }, [data])
+
+  const deleteAsset = async ( id : number ) => {
+    const res = await fetch(`/api/assets/${id}`, 
+        {
+          method: "POST",
+          headers: {"Content-Type": "application/json",},
+          body: JSON.stringify(data)
+        })
+    mutate()
+    return res.json()
+  }
+
   return (
     <>
       <Layout>
@@ -84,21 +123,36 @@ const Home: NextPage = () => {
                 <ul className='px-4 py-2 border rounded-lg shadow-lg'>
                   {
                     data?.assets.map((a)=>
-                    a.dept === 0 ? null 
+                    a.debt === 0 ? null 
                     : <li key={a.id}>
-                      {a.title} - {a.dept}만원
+                      {a.title} - {a.debt}만원
                     </li>
                   )}
                 </ul>
               </div>
             </div>
           </div>
-          <ul className='flex flex-col px-4 py-2 mt-8 space-y-2 text-xl font-semibold'>
+
+          <form onSubmit={handleSubmit(onValid)} className='flex flex-col px-6 py-2 mt-12 space-y-2'>
+            <h3 className='mb-6 text-2xl font-semibold text-center'>자산 추가하기</h3>
+            <input type='text' {...register('title', {required :true})} placeholder='자산이름' />
+            <input type='number' {...register('income', {required :false})} placeholder='수입' />
+            <input type='number' {...register('outcome', {required :false})} placeholder='지출' />
+            <input type='number' {...register('price', {required :false})} placeholder='가격' />
+            <input type='number' {...register('debt', {required :false})} placeholder='대출' />
+            <button type='submit' className='px-4 py-1 text-white bg-teal-500 rounded-full hover:bg-teal-600'>추가하기</button>
+          </form>
+
+          <ul className='flex flex-col px-4 py-2 mt-8 space-y-2'>
+            <h2 className='text-2xl font-semibold'>자산/부채 리스트</h2>
             {
-              data?.assets.map((a) => 
-              <li key={a.id}>
-                {a.title}
-              </li>)
+              data?.assets.map((a) => {
+                return <li key={a.id}>
+                  <div className='flex items-center justify-between'>
+                    <p> {a.title} </p>
+                    <button onClick={()=>deleteAsset(a.id)}>삭제</button>
+                  </div>
+                </li>})
             }
           </ul>
         </main>
